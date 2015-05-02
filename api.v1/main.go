@@ -88,14 +88,14 @@ func (api api) requestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rateReply := <-rateCh
-	if err := rateReply.err; err != nil {
+	if err := rateReply.Err; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	inventory := inventory{
 		Hotels:    profileReply.hotels,
-		RatePlans: rateReply.ratePlans,
+		RatePlans: rateReply.RatePlans,
 	}
 
 	body, err := json.Marshal(inventory)
@@ -107,21 +107,11 @@ func (api api) requestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-type rateResults struct {
-	ratePlans []*rate_pb.RatePlan
-	err       error
-}
-
-func (api api) getRatePlans(ctx context.Context, hotelIDs []int32, inDate string, outDate string) chan rateResults {
-	ch := make(chan rateResults, 1)
+func (api api) getRatePlans(ctx context.Context, hotelIDs []int32, inDate string, outDate string) chan rate.RatePlanReply {
+	ch := make(chan rate.RatePlanReply, 1)
 
 	go func() {
-		ratePlans, err := api.rateClient.GetRatePlans(ctx, hotelIDs, inDate, outDate)
-
-		ch <- rateResults{
-			ratePlans: ratePlans,
-			err:       err,
-		}
+		ch <- api.rateClient.GetRatePlans(ctx, hotelIDs, inDate, outDate)
 	}()
 
 	return ch
